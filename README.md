@@ -50,7 +50,8 @@ git push -u origin main
 
 ## Deploy to Heroku (live)
 
-App: `ucp-campus-community` → `https://ucp-campus-community-a4cdb3821515.herokuapp.com/`
+App: `ucp-campus-community` → `https://ucp.animezone.me`
+(fallback Heroku URL: `https://ucp-campus-community-a4cdb3821515.herokuapp.com/`)
 
 Files: `Procfile` (`web: npx next start -p $PORT`), `app.json`
 (heroku/nodejs, env declarations), `package.json:start`
@@ -63,12 +64,16 @@ heroku config:set SUPABASE_URL=https://rggrodedmioijwgfkljt.supabase.co \
   SUPABASE_SERVICE_ROLE_KEY=<service_role> \
   ODOO_BASE=https://horizon.ucp.edu.pk CORS_ORIGIN="*" --app ucp-community-api
 git push heroku main
-curl https://ucp-campus-community-a4cdb3821515.herokuapp.com/api/health
+curl https://ucp.animezone.me/api/health
 # → {"ok":true,...} ; GET /api/me without header → 401
 ```
 
+Custom domain: `ucp.animezone.me` (`heroku domains:add ucp.animezone.me`,
+CNAME → `curved-muskmelon-7lb7bf5so88opw08qeaz4p4m.herokudns.com`,
+`heroku certs:auto:enable` — cert issued, auto-renews).
+
 Point Flutter at it:
-`flutter build apk --release --dart-define=NODE_API_URL=https://ucp-campus-community-a4cdb3821515.herokuapp.com`
+`flutter build apk --release --dart-define=NODE_API_URL=https://ucp.animezone.me`
 
 ## Deploy to Vercel
 
