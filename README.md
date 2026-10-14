@@ -48,6 +48,28 @@ git push -u origin main
 
 (If `gh` CLI is logged in: `gh repo create ucp-community-api --public --source=. --push`.)
 
+## Deploy to Heroku (live)
+
+App: `ucp-community-api` → `https://ucp-community-api-7fbc694cea1f.herokuapp.com/`
+
+Files: `Procfile` (`web: npx next start -p $PORT`), `app.json`
+(heroku/nodejs, env declarations), `package.json:start`
+(`next start -p ${PORT:-3000}`) + `heroku-postbuild`.
+
+```bash
+heroku login
+heroku create ucp-community-api   # or heroku create for random name
+heroku config:set SUPABASE_URL=https://rggrodedmioijwgfkljt.supabase.co \
+  SUPABASE_SERVICE_ROLE_KEY=<service_role> \
+  ODOO_BASE=https://horizon.ucp.edu.pk CORS_ORIGIN="*" --app ucp-community-api
+git push heroku main
+curl https://ucp-community-api-7fbc694cea1f.herokuapp.com/api/health
+# → {"ok":true,...} ; GET /api/me without header → 401
+```
+
+Point Flutter at it:
+`flutter build apk --release --dart-define=NODE_API_URL=https://ucp-community-api-7fbc694cea1f.herokuapp.com`
+
 ## Deploy to Vercel
 
 1. **vercel.com → Add New → Project → Import** the repo (framework
