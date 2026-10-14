@@ -21,6 +21,9 @@ as someone else. The Flutter app holds no database credentials at all.
 | POST | `/api/posts/:id/comments` | required | `{text 1..2000, parentId?}` (parent must belong to post) → 201 |
 | POST | `/api/comments/:id/vote` | required | same contract as post votes |
 | POST | `/api/upload` | required | multipart `image` (jpeg/png/webp/gif, ≤5 MB) → 201 `{url, path}` |
+| GET | `/api/teachers?dept=&q=&limit=` | — | highest rated first, max 1000 |
+| GET | `/api/teachers/:slug` | — | `{teacher, reviews[]}` latest 200 |
+| POST | `/api/teachers/:slug/rate` | required | `{grading, leniency, subject 1..5, comment ≤2000}` → 201 `{review, stats}` |
 | GET | `/api/stream` | optional | SSE `community-changed` events + `:ping` keepalive |
 
 Session travels as header `x-ucp-session` (query `?session_id=` also works).
