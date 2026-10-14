@@ -1,0 +1,27 @@
+{
+  "name": "UCP Campus Community API",
+  "description": "UCP Campus community API on Next.js App Router: posts, votes, comments, uploads, SSE. Writes require a live Odoo (Horizon) portal session.",
+  "stack": "heroku-24",
+  "buildpacks": [{ "url": "heroku/nodejs" }],
+  "env": {
+    "SUPABASE_URL": {
+      "description": "Supabase project URL, e.g. https://xyzcompany.supabase.co",
+      "generator": "secret"
+    },
+    "SUPABASE_SERVICE_ROLE_KEY": {
+      "description": "Supabase service_role key (server only, never commit).",
+      "generator": "secret"
+    },
+    "ODOO_BASE": {
+      "description": "Odoo/Horizon base URL for session verification.",
+      "value": "https://horizon.ucp.edu.pk"
+    },
+    "CORS_ORIGIN": {
+      "description": "Allowed CORS origin, * for pilot or exact origin.",
+      "value": "*"
+    }
+  },
+  "formation": {
+    "web": { "quantity": 1, "size": "basic" }
+  }
+}
