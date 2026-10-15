@@ -90,25 +90,26 @@ describe('auth', () => {
   test('verified sessions are cached ~60s, failures are not', async () => {
     authed();
     __setClient(makeSupabase(makeRows()));
-    const me = () =>
+    const me = (sid, want) =>
       testApiHandler({
         appHandler: meHandler,
         test: async ({ fetch }) => {
           const res = await fetch({
             method: 'GET',
-            headers: { 'x-ucp-session': 'live-sid' },
+            headers: { 'x-ucp-session': sid },
           });
-          expect(res.status).toBe(200);
+          expect(res.status).toBe(want);
         },
       });
-    await me();
-    await me();
-    // One Odoo round-trip for two requests with the same session.
+    // Same session twice: one Odoo round-trip, both 200.
+    await me('live-sid', 200);
+    await me('live-sid', 200);
     expect(verifyOdooSession).toHaveBeenCalledTimes(1);
     // A rejected session always re-verifies (never cached as dead).
     anon();
-    await me();
-    expect(verifyOdooSession).toHaveBeenCalledTimes(2);
+    await me('dead-sid', 401);
+    await me('dead-sid', 401);
+    expect(verifyOdooSession).toHaveBeenCalledTimes(3);
   });
 
   test('writes without a session are 401', async () => {
