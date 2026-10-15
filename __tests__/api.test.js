@@ -12,6 +12,7 @@ import * as uploadHandler from '../app/api/upload/route';
 import * as commentVoteHandler from '../app/api/comments/[id]/vote/route';
 import { __setClient, __resetClient } from '@/lib/supabase';
 import { __reset as __resetEvents } from '@/lib/events';
+import { __resetSessionCache } from '@/lib/session-cache';
 import {
   makeRows,
   makeSupabase,
@@ -43,6 +44,7 @@ beforeEach(() => {
   verifyOdooSession.mockReset();
   __resetClient();
   __resetEvents();
+  __resetSessionCache();
   process.env.SUPABASE_URL = 'https://x.supabase.co';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key';
 });
@@ -83,6 +85,30 @@ describe('auth', () => {
         expect((await res.json()).user.email).toBe('tester@ucp.edu.pk');
       },
     });
+  });
+
+  test('verified sessions are cached ~60s, failures are not', async () => {
+    authed();
+    __setClient(makeSupabase(makeRows()));
+    const me = () =>
+      testApiHandler({
+        appHandler: meHandler,
+        test: async ({ fetch }) => {
+          const res = await fetch({
+            method: 'GET',
+            headers: { 'x-ucp-session': 'live-sid' },
+          });
+          expect(res.status).toBe(200);
+        },
+      });
+    await me();
+    await me();
+    // One Odoo round-trip for two requests with the same session.
+    expect(verifyOdooSession).toHaveBeenCalledTimes(1);
+    // A rejected session always re-verifies (never cached as dead).
+    anon();
+    await me();
+    expect(verifyOdooSession).toHaveBeenCalledTimes(2);
   });
 
   test('writes without a session are 401', async () => {
