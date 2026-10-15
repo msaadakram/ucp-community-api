@@ -14,7 +14,7 @@ as someone else. The Flutter app holds no database credentials at all.
 |---|---|---|---|
 | GET | `/api/health` | — | `{ok, time}` |
 | GET | `/api/me` | session | echoes verified `{uid, email, name}` |
-| GET | `/api/posts?limit=` | optional | newest first; `score` excludes my vote; embedded flat `comments[]` |
+| GET | `/api/posts?limit=&before=` | optional | newest first; `score` excludes my vote; embedded flat `comments[]`; `before` ISO cursor returns only older posts (infinite scroll) |
 | POST | `/api/posts` | required | `{title 1..120, body ≤2000, flair, imageUrl?}` → 201 |
 | POST | `/api/posts/:id/vote` | required | `{value: 1\|-1}` sets, `{}` clears |
 | GET | `/api/posts/:id/comments` | optional | flat rows, oldest first |

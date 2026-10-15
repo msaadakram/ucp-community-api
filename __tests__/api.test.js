@@ -139,6 +139,49 @@ describe('posts', () => {
     });
   });
 
+  test('before cursor pages older posts, garbage means page one', async () => {
+    const tables = makeRows();
+    const newer = tables.community_posts[0].created_at;
+    tables.community_posts.push({
+      id: '22222222-2222-2222-2222-222222222222',
+      author_email: 'old@ucp.edu.pk',
+      author_name: 'oldie',
+      title: 'Older post',
+      body: 'from yesterday',
+      flair: 'Study',
+      image_url: null,
+      created_at: new Date(Date.now() - 26 * 3600000).toISOString(),
+    });
+    authed();
+    __setClient(makeSupabase(tables));
+    await testApiHandler({
+      appHandler: postsHandler,
+      url: `/api/posts?limit=10&before=${encodeURIComponent(newer)}`,
+      test: async ({ fetch }) => {
+        const page2 = await fetch({
+          method: 'GET',
+          headers: { 'x-ucp-session': 'live-sid' },
+        });
+        expect(page2.status).toBe(200);
+        const b2 = await page2.json();
+        expect(b2.posts).toHaveLength(1);
+        expect(b2.posts[0].title).toBe('Older post');
+      },
+    });
+    await testApiHandler({
+      appHandler: postsHandler,
+      url: '/api/posts?limit=10&before=not-a-date',
+      test: async ({ fetch }) => {
+        const garbage = await fetch({
+          method: 'GET',
+          headers: { 'x-ucp-session': 'live-sid' },
+        });
+        expect(garbage.status).toBe(200);
+        expect((await garbage.json()).posts).toHaveLength(2);
+      },
+    });
+  });
+
   test('create uses the SESSION identity, never the body author', async () => {
     authed();
     __setClient(makeSupabase(makeRows()));

@@ -22,9 +22,10 @@ function limited(req, max) {
   return check.allowed ? null : check;
 }
 
-/* GET /api/posts?limit= — newest first with scores, my votes and full
- * embedded comment threads. Reads are open; pass the session to also get
- * MY votes. */
+/* GET /api/posts?limit=&before= — newest first with scores, my votes and
+ * full embedded comment threads. `before` is an ISO timestamp cursor for
+ * infinite scroll: only posts older than it are returned. Reads are open;
+ * pass the session to also get MY votes. */
 export async function GET(req) {
   const config = getConfig();
   const bad = needConfig(config);
@@ -47,11 +48,17 @@ export async function GET(req) {
     const nowMs = Date.now();
     const db = getSupabase(config);
 
-    const { data: rows, error } = await db
+    let query = db
       .from('community_posts')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(limit);
+    const beforeRaw = url.searchParams.get('before') || '';
+    // Cursor must be a real timestamp; garbage falls back to page one.
+    if (beforeRaw && !Number.isNaN(Date.parse(beforeRaw))) {
+      query = query.lt('created_at', new Date(beforeRaw).toISOString());
+    }
+    const { data: rows, error } = await query;
     if (error) throw error;
     const ids = rows.map((r) => r.id);
 

@@ -55,6 +55,11 @@ class FakeQuery {
     return this;
   }
 
+  lt(k, v) {
+    this.rows = this.rows.filter((r) => String(r[k]) < String(v));
+    return this;
+  }
+
   in(col, arr) {
     const set = new Set(arr.map(String));
     this.rows = this.rows.filter((r) => set.has(String(r[col])));
