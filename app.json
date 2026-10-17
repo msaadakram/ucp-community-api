@@ -1,6 +1,6 @@
 {
-  "name": "UCP Campus Community API",
-  "description": "UCP Campus community API on Next.js App Router: posts, votes, comments, uploads, SSE. Writes require a live Odoo (Horizon) portal session.",
+  "name": "UCP Campus Combined API",
+  "description": "One Next.js server for the Flutter community app (Supabase) and the Live Grading extension (MongoDB under /api/ext/*).",
   "stack": "heroku-24",
   "buildpacks": [{ "url": "heroku/nodejs" }],
   "env": {
@@ -19,6 +19,22 @@
     "CORS_ORIGIN": {
       "description": "Allowed CORS origin, * for pilot or exact origin.",
       "value": "*"
+    },
+    "MONGODB_URI": {
+      "description": "MongoDB URI for /api/ext/* (extension). Unset = ext routes 503, community unaffected.",
+      "generator": "secret"
+    },
+    "BASE_URL": {
+      "description": "Public host, used in earn referral links.",
+      "value": "https://ucp.animezone.me"
+    },
+    "CREDITS_REWARD": {
+      "description": "Credits granted per referral claim.",
+      "value": "50"
+    },
+    "CUTY_API_TOKEN": {
+      "description": "Cuty.io token for referral short links (unset = long URLs).",
+      "generator": "secret"
     }
   },
   "formation": {

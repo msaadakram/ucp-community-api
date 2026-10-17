@@ -1,12 +1,21 @@
-# UCP Campus Community API (Next.js, Vercel-ready)
+# UCP Campus Combined API (Next.js, Vercel-ready)
 
-Community backend for the UCP Campus Flutter app: posts, votes, nested
-comments, photo uploads and a live-update event stream.
+One server for both clients: the UCP Campus Flutter app (community:
+posts, votes, comments, uploads, teachers, SSE) **and** the UCP Live
+Grading Chrome extension (grades, leaderboard, timetable, credits,
+privacy, OAuth cookies, earn/referral, admin) under `/api/ext/*`.
 
-Every write carries the student's Horizon portal `session_id`, which the
-API re-verifies against Odoo **live on every request**. Author identity
-always comes from Odoo's answer — clients can never post, vote or comment
-as someone else. The Flutter app holds no database credentials at all.
+Community writes carry the student's Horizon portal `session_id`, which
+the API re-verifies against Odoo **live on every request**. Author
+identity always comes from Odoo's answer — clients can never post, vote
+or comment as someone else. The Flutter app holds no database
+credentials at all.
+
+Extension routes are a verbatim port of `extention-server` (Express +
+MongoDB): same JSON contracts and status codes, so the shipped v2.2.0
+extension keeps working with only a base-URL + `/ext` prefix change.
+They use MongoDB (`MONGODB_URI`); when it is unset they answer 503
+while community routes keep working.
 
 ## Endpoints (same contract the app already speaks)
 
@@ -25,17 +34,66 @@ as someone else. The Flutter app holds no database credentials at all.
 | GET | `/api/teachers/:slug` | — | `{teacher, reviews[]}` latest 200 |
 | POST | `/api/teachers/:slug/rate` | required | `{grading, leniency, subject 1..5, comment ≤2000}` → 201 `{review, stats}` |
 | GET | `/api/stream` | optional | SSE `community-changed` events + `:ping` keepalive |
+| POST | `/api/ext/grades/save` | — | extension grade save → 201 (was `/api/save-grades`) |
+| GET | `/api/ext/grades/:studentId` | — | all grades for a student |
+| GET | `/api/ext/leaderboard?courseName=&studentId=` | — | classmate-scoped ranks; with `studentId`: 402 when broke, deducts 1 |
+| POST | `/api/ext/timetable/save` | — | timetable + SubjectGroup rebuild → 201 |
+| GET | `/api/ext/timetable` | — | raw timetable dump (array) |
+| GET | `/api/ext/students/:id/check` | — | `{exists, hasTimetable, lastTimetableUpdate}` |
+| GET | `/api/ext/credits/:studentId` | — | balance (auto-creates 500) |
+| POST | `/api/ext/credits/deduct` | — | `{studentId}` → decremented balance |
+| GET | `/api/ext/privacy/:studentId` | — | `{hideName, hidePhoto}` |
+| POST | `/api/ext/privacy` | — | `{studentId, hideName, hidePhoto}` upsert |
+| POST | `/api/ext/cookies/save` | — | OAuth cookie jar (10 MB body) → 201 |
+| POST | `/api/ext/earn/generate` | 10/m | `{userId}` → `{shortUrl}` (Cuty) or 503 |
+| GET | `/api/ext/earn/verify/:token?key=` | 30/m | claims credits → `{success, credits}` |
+| GET | `/api/ext/earn/credits/:userId` | — | earn balance |
+| POST | `/api/ext/admin/login` | — | `{username, password}` → `{token}` (24h) |
+| POST | `/api/ext/admin/logout` | — | revoke Bearer token |
+| GET | `/api/ext/admin/sessions[ /:id]` | admin | paged cookie sessions (list hides jars) |
+| GET | `/api/ext/migrate/bump-credits` | admin | set sub-500 balances to 500 (**now auth-gated; was open**) |
+| GET | `/token/:token` | — | glass claim page (calls ext verify) |
+
+Extension rate limits mirror the old server (write 30/m, read 60/m,
+earn-generate 10/m, earn-verify 30/m — per-instance, same caveat as the
+community limiter).
 
 Session travels as header `x-ucp-session` (query `?session_id=` also works).
 
 ## Local run
 
 ```bash
-cp .env.example .env   # fill SUPABASE_URL + SERVICE_ROLE key
+cp .env.example .env   # fill SUPABASE_URL + SERVICE_ROLE key (+ MONGODB_URI for /api/ext/*)
 npm install
-npm test               # 14 route/auth/upload tests, no network
+npm test               # 35 tests (16 community + 19 ext), no network
 npm run dev            # → http://localhost:3000
 ```
+
+Extension env (optional — ext routes 503 without `MONGODB_URI`):
+`MONGODB_URI`, `CREDITS_REWARD=50`, `BASE_URL` (public host, used in
+referral links), `CUTY_API_TOKEN`, `CUTY_API_BASE_URL`, `CUTY_TIMEOUT_MS`.
+
+## Extension cutover (client)
+
+The shipped v2.2.0 extension needs only a base-URL + prefix change
+(ship as v2.3.0, keep `gradeserver-rho` live until adoption flips):
+
+- `src/config.js` `API_BASE_URL` → combined host
+  (`https://ucp.animezone.me`); same in
+  `src/background/cookieCaptureConfig.js` and `popup.js`.
+- Prefix every path with `/ext`: `/api/save-grades` →
+  `/api/ext/grades/save`, `/api/leaderboard` →
+  `/api/ext/leaderboard`, `/api/save-timetable` →
+  `/api/ext/timetable/save`, `/api/check-student/:id` →
+  `/api/ext/students/:id/check`, `/api/credits/...` →
+  `/api/ext/credits/...`, `/api/privacy...` → `/api/ext/privacy...`,
+  `/api/cookies/save` → `/api/ext/cookies/save`,
+  `/api/earn/...` → `/api/ext/earn/...`.
+- Referral links now render as `<host>/token/<token>?key=...`
+  (server builds them from `BASE_URL`).
+- `manifest.json` host_permissions: replace the two
+  `gradeserver-rho` / `extention-server-two` entries with the combined
+  host.
 
 ## Push to GitHub (new repo)
 
