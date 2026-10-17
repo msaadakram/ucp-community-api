@@ -17,9 +17,12 @@ export const dynamic = 'force-dynamic';
 
 const COOKIE_MAX_AGE = 24 * 60 * 60; // 24h, mirrors admin session TTL
 
-/* POST /api/admin/session {username, password} — login, set cookie. */
+/* POST /api/admin/session {username, password} — login, set cookie.
+ * Own credential auth: no ext API key needed here. */
 export async function POST(req) {
-  const { origin, response } = await extRoute(req, 'write');
+  const { origin, response } = await extRoute(req, 'write', {
+    requireKey: false,
+  });
   if (response) return response;
   let body = {};
   try {
