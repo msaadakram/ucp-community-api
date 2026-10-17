@@ -1,0 +1,26 @@
+name: API CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+        env:
+          # Routes read envs per request; tests only need these present.
+          SUPABASE_URL: https://x.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: test-key
+      - run: npm run build
+        env:
+          SUPABASE_URL: https://x.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: test-key

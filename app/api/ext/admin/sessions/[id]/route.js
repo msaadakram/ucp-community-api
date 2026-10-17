@@ -32,7 +32,12 @@ export async function GET(req, { params }) {
       );
     }
     return json(
-      { session: doc, export: buildCookieExport(doc) },
+      {
+        // Session metadata WITHOUT the stored cookie values (sealed at
+        // rest); the decrypted jar lives in `export` only.
+        session: { ...doc, cookies: undefined },
+        export: buildCookieExport(doc),
+      },
       { origin },
     );
   } catch (err) {

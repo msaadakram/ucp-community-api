@@ -1,6 +1,7 @@
-/* Security tests for the ext hardening: API-key gate, CSRF guard, and
- * the fail-closed admin login (no default password any more). Offline:
- * Mongo models are mocked with tiny in-memory stores. */
+/* Security tests for the ext hardening: API-key gate, CSRF guard, the
+ * fail-closed admin login (no default password), and cookie-vault
+ * encryption at rest. Offline: Mongo models are mocked with tiny
+ * in-memory stores. */
 
 import crypto from 'crypto';
 
@@ -37,6 +38,14 @@ jest.mock('../lib/ext/models-misc', () => {
 import { AdminUser, AdminSession, __stores, __putUser } from '../lib/ext/models-misc';
 import { hashPassword, verifyPassword, adminLogin } from '../lib/ext/admin';
 import { extApiKeyOk, requireSameOrigin } from '../lib/ext/route';
+import {
+  encryptCookieValue,
+  decryptCookieValue,
+  encryptCookieList,
+  decryptCookieList,
+  isEncryptedCookieValue,
+} from '../lib/ext/vault-crypto';
+import { buildCookieExport } from '../lib/ext/cookies';
 import { testApiHandler } from 'next-test-api-route-handler';
 import * as creditsRoute from '../app/api/ext/credits/[studentId]/route';
 
@@ -160,5 +169,57 @@ describe('hash/verify round-trip', () => {
     expect(verifyPassword('pw', h)).toBe(true);
     expect(verifyPassword('no', h)).toBe(false);
     expect(verifyPassword('pw', 'garbage')).toBe(false);
+  });
+});
+
+describe('cookie vault encryption at rest', () => {
+  beforeEach(() => {
+    process.env.EXT_API_KEY = 'vault-key-material';
+  });
+
+  test('round-trip: stored value never contains the secret', () => {
+    const secret = 'ESTS-very-long-oauth-token-value-123456';
+    const sealed = encryptCookieValue(secret);
+    expect(sealed).not.toContain(secret);
+    expect(sealed.startsWith('v1:')).toBe(true);
+    expect(isEncryptedCookieValue(sealed)).toBe(true);
+    expect(decryptCookieValue(sealed)).toBe(secret);
+  });
+
+  test('each seal uses a fresh IV (no deterministic ciphertext)', () => {
+    const a = encryptCookieValue('same');
+    const b = encryptCookieValue('same');
+    expect(a).not.toBe(b);
+  });
+
+  test('legacy plaintext rows pass through and re-seal on save', () => {
+    expect(decryptCookieValue('plain-old-value')).toBe('plain-old-value');
+    expect(isEncryptedCookieValue('plain-old-value')).toBe(false);
+    const list = encryptCookieList([
+      { name: 'a', value: 'plain-old-value' },
+    ]);
+    expect(isEncryptedCookieValue(list[0].value)).toBe(true);
+    expect(decryptCookieList(list)[0].value).toBe('plain-old-value');
+  });
+
+  test('wrong key material yields empty string, never a crash', () => {
+    const sealed = encryptCookieValue('secret-xyz');
+    process.env.EXT_API_KEY = 'different-key-entirely';
+    // scrypt cache is keyed by material, so this derives a new key.
+    expect(decryptCookieValue(sealed)).toBe('');
+  });
+
+  test('admin export decrypts while stored doc stays sealed', () => {
+    const doc = {
+      sessionId: 's1',
+      userName: 'u',
+      cookies: encryptCookieList([
+        { name: 'SESSION', value: 'super-secret-session-cookie' },
+      ]),
+    };
+    const exp = buildCookieExport(doc);
+    expect(exp.cookies[0].value).toBe('super-secret-session-cookie');
+    // The raw stored doc remains ciphertext.
+    expect(doc.cookies[0].value).not.toContain('super-secret');
   });
 });
