@@ -35,6 +35,10 @@
     "CUTY_API_TOKEN": {
       "description": "Cuty.io token for referral short links (unset = long URLs).",
       "generator": "secret"
+    },
+    "ADMIN_PASSWORD": {
+      "description": "Admin panel password (overrides seeded admin/admin on first boot). REQUIRED in production.",
+      "generator": "secret"
     }
   },
   "formation": {

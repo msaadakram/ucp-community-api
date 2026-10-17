@@ -53,10 +53,38 @@ while community routes keep working.
 | GET | `/api/ext/admin/sessions[ /:id]` | admin | paged cookie sessions (list hides jars) |
 | GET | `/api/ext/migrate/bump-credits` | admin | set sub-500 balances to 500 (**now auth-gated; was open**) |
 | GET | `/token/:token` | — | glass claim page (calls ext verify) |
+| POST | `/api/admin/session` | — | admin UI login → httpOnly cookie (24h) |
+| DELETE | `/api/admin/session` | cookie | admin UI logout → clear cookie |
+| GET | `/api/ext/admin/session-jar/:id` | cookie | masked jar (names + first 6 chars) for the UI reveal |
+| POST | `/api/ext/admin/credits-adjust` | cookie | `{studentId, amount -1000..1000}` grant/revoke |
+| GET | `/api/ext/admin/migrate-preview?dry=1` | cookie | bump-credits dry-run, `dry=0` executes |
 
 Extension rate limits mirror the old server (write 30/m, read 60/m,
 earn-generate 10/m, earn-verify 30/m — per-instance, same caveat as the
 community limiter).
+
+## Admin control panel (`/admin`)
+
+Server-rendered backend console — no build step, no JS framework state.
+Login at `/admin/login` (cookie session, httpOnly, 24h). Pages:
+
+| Page | Controls |
+|---|---|
+| `/admin` | live Mongo + Supabase counts, subsystem status |
+| `/admin/grades` | search grades by course/student, privacy flags |
+| `/admin/leaderboard` | inspect classmate scoping per course (read-only, no credits touched) |
+| `/admin/timetable` | search timetable rows, class-group counts |
+| `/admin/cookies` | paged OAuth sessions (**jars hidden in list**); per-row inspect with click-to-reveal masked jar (first 6 chars) |
+| `/admin/credits` | top-20 balances, student lookup, grant/revoke ±1000 |
+| `/admin/earn` | referral token inventory (active/claimed) |
+| `/admin/migrate` | bump-credits dry-run preview + guarded execute |
+| `/admin/health` | live Supabase/Mongo/Odoo probes + env presence |
+
+**Production:** set `ADMIN_PASSWORD` env before first boot (overrides the
+seeded `admin/admin`; existing users untouched). Security headers
+(`nosniff`, `DENY` framing, `no-referrer`, `no-store`) ship on
+`/admin/*` via `next.config.js`. Cookie is `httpOnly + SameSite=lax`
+(`Secure` in production).
 
 Session travels as header `x-ucp-session` (query `?session_id=` also works).
 

@@ -1,10 +1,5 @@
 import { json } from '@/lib/respond';
-import {
-  adminLogin,
-  adminLogout,
-  validateAdminToken,
-  adminTokenFromHeaders,
-} from '@/lib/ext/admin';
+import { adminLogin } from '@/lib/ext/admin';
 import { adminLoginSchema } from '@/lib/ext/schemas2';
 import { validateBody, extEnvelope, extError } from '@/lib/ext/validate';
 import { extRoute } from '@/lib/ext/route';
@@ -50,5 +45,3 @@ export async function POST(req) {
     return extError(err, origin);
   }
 }
-
-export { adminLogout, validateAdminToken, adminTokenFromHeaders };

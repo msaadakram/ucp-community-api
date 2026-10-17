@@ -1,6 +1,4 @@
 import { json } from '@/lib/respond';
-import { RewardToken } from '@/lib/ext/models-misc';
-import { addCredits, getCredits } from '@/lib/ext/credits';
 import {
   buildTokenUrl,
   generateAccessKey,
@@ -93,5 +91,3 @@ export async function POST(req) {
     return extError(err, origin);
   }
 }
-
-export { RewardToken, addCredits, getCredits };

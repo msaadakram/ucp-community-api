@@ -1,10 +1,6 @@
 import { json } from '@/lib/respond';
 import { validateAdminToken, adminTokenFromHeaders } from '@/lib/ext/admin';
-import {
-  listCookieSessions,
-  getCookieSessionById,
-  buildCookieExport,
-} from '@/lib/ext/cookies';
+import { listCookieSessions } from '@/lib/ext/cookies';
 import { extRoute } from '@/lib/ext/route';
 
 export const runtime = 'nodejs';
@@ -46,5 +42,3 @@ export async function GET(req) {
     );
   }
 }
-
-export { getCookieSessionById, buildCookieExport };
