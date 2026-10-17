@@ -4,7 +4,7 @@ import Joi from 'joi';
 import { validateAdminToken } from '@/lib/ext/admin';
 import { addCredits } from '@/lib/ext/credits';
 import { validateBody, extEnvelope, extError } from '@/lib/ext/validate';
-import { extRoute } from '@/lib/ext/route';
+import { extRoute, requireSameOrigin } from '@/lib/ext/route';
 import { ADMIN_COOKIE } from '@/lib/ext/admin-cookie';
 
 export const runtime = 'nodejs';
@@ -19,7 +19,7 @@ const adjustSchema = Joi.object({
  * credit grant/revoke. Cookie-authenticated (first-party panel only). */
 
 export async function POST(req) {
-  const { origin, response } = await extRoute(req, 'write');
+  const { origin, response } = await extRoute(req, 'write', { requireKey: false });
   if (response) return response;
   const store = await cookies();
   const session = await validateAdminToken(
@@ -29,6 +29,14 @@ export async function POST(req) {
     return json(
       { error: 'Unauthorized', code: 'ADMIN_AUTH_REQUIRED' },
       { status: 401, origin },
+    );
+  }
+  // CSRF guard: browser mutations must be same-origin (or set the custom
+  // header, which cross-site forms cannot).
+  if (!requireSameOrigin(req)) {
+    return json(
+      { error: 'Same-origin required', code: 'CSRF_GUARD' },
+      { status: 403, origin },
     );
   }
   let body = {};

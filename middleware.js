@@ -19,7 +19,8 @@ export function middleware(req) {
       headers: {
         'Access-Control-Allow-Origin': allow,
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, x-ucp-session',
+        'Access-Control-Allow-Headers':
+          'Content-Type, x-ucp-session, x-api-key, x-admin-request',
         'Access-Control-Max-Age': '86400',
       },
     });

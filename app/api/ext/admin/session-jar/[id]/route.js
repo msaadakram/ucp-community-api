@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
  * masked values (first 6 chars) — never full secrets. */
 
 export async function GET(req, { params }) {
-  const { origin, response } = await extRoute(req, 'read');
+  const { origin, response } = await extRoute(req, 'read', { requireKey: false });
   if (response) return response;
   const store = await cookies();
   const token = store.get(ADMIN_COOKIE)?.value || null;

@@ -18,7 +18,7 @@ export const runtime = 'nodejs';
 
 /* GET /api/ext/earn/verify/:token?key= — was GET /api/earn/verify/:token. */
 export async function GET(req, { params }) {
-  const { config, origin, response } = await extRoute(req, 'earnVerify');
+  const { config, origin, response } = await extRoute(req, 'earnVerify', { requireKey: false });
   if (response) return response;
   const ext = extDefaults(config);
   const raw = await params;

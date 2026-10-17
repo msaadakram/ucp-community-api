@@ -14,7 +14,7 @@ function denied(origin) {
 
 /* GET /api/ext/admin/sessions?... — was GET /admin/api/sessions. */
 export async function GET(req) {
-  const { origin, response } = await extRoute(req, 'read');
+  const { origin, response } = await extRoute(req, 'read', { requireKey: false });
   if (response) return response;
   const session = await validateAdminToken(
     adminTokenFromHeaders(req.headers),

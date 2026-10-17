@@ -11,7 +11,7 @@ export const runtime = 'nodejs';
 
 /* GET /api/ext/admin/sessions/:id — was GET /admin/api/sessions/:id. */
 export async function GET(req, { params }) {
-  const { origin, response } = await extRoute(req, 'read');
+  const { origin, response } = await extRoute(req, 'read', { requireKey: false });
   if (response) return response;
   const session = await validateAdminToken(
     adminTokenFromHeaders(req.headers),

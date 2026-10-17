@@ -18,9 +18,8 @@ export default function AdminLoginPage() {
           </div>
           <LoginForm />
           <div className="muted" style={{ marginTop: 14 }}>
-            Default seed is <code className="mono">admin / admin</code> — set
-            the <code className="mono">ADMIN_PASSWORD</code> env var in
-            production.
+            Sign in with the credentials configured via the{' '}
+            <code className="mono">ADMIN_PASSWORD</code> env var.
           </div>
         </div>
       </div>

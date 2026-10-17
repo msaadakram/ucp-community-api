@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 
 /* POST /api/ext/admin/login — was POST /admin/api/login. */
 export async function POST(req) {
-  const { origin, response } = await extRoute(req, 'write');
+  const { origin, response } = await extRoute(req, 'write', { requireKey: false });
   if (response) return response;
   let body = {};
   try {

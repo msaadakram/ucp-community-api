@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 /* GET /api/ext/migrate/bump-credits — was GET /migrate/bump-credits.
  * Now requires the admin Bearer token (was open upstream). */
 export async function GET(req) {
-  const { origin, response } = await extRoute(req, 'read');
+  const { origin, response } = await extRoute(req, 'read', { requireKey: false });
   if (response) return response;
   const session = await validateAdminToken(
     adminTokenFromHeaders(req.headers),

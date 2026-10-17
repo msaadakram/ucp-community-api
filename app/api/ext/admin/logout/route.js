@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 
 /* POST /api/ext/admin/logout — was POST /admin/api/logout. */
 export async function POST(req) {
-  const { origin, response } = await extRoute(req, 'read');
+  const { origin, response } = await extRoute(req, 'read', { requireKey: false });
   if (response) return response;
   try {
     await adminLogout(adminTokenFromHeaders(req.headers));
