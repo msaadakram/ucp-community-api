@@ -37,6 +37,17 @@ jest.mock('../lib/ext/models-misc', () => {
 import { AdminUser, AdminSession, __stores, __putUser } from '../lib/ext/models-misc';
 import { hashPassword, verifyPassword, adminLogin } from '../lib/ext/admin';
 import { extApiKeyOk, requireSameOrigin } from '../lib/ext/route';
+import { testApiHandler } from 'next-test-api-route-handler';
+import * as creditsRoute from '../app/api/ext/credits/[studentId]/route';
+
+// extRoute must never hit Mongo for these tests.
+jest.mock('../lib/ext/mongo', () => ({
+  ensureMongo: async () => {},
+  mongoConnection: { readyState: 1 },
+}));
+jest.mock('../lib/ext/credits', () => ({
+  getCredits: async () => ({ studentId: 'test', credits: 500 }),
+}));
 
 function fakeReq({ key, site, adminHeader } = {}) {
   const headers = new Map();
@@ -53,6 +64,15 @@ beforeEach(() => {
 });
 
 describe('ext API-key gate', () => {
+  beforeEach(() => {
+    process.env.EXT_API_KEY = 'k1';
+    process.env.MONGODB_URI = 'mongodb://test'; // ensureMongo is mocked
+  });
+  afterEach(() => {
+    delete process.env.EXT_API_KEY;
+    delete process.env.MONGODB_URI;
+  });
+
   test('constant-time key match, mismatch and missing all fail', () => {
     const config = { extApiKey: 'secret-key-1' };
     expect(extApiKeyOk(fakeReq({ key: 'secret-key-1' }), config)).toBe(true);
@@ -61,6 +81,31 @@ describe('ext API-key gate', () => {
     // Unset key => always false (fail closed).
     expect(extApiKeyOk(fakeReq({ key: 'x' }), { extApiKey: '' })).toBe(false);
   });
+
+  test('HTTP: ext route answers 401 + body without the key, 200 with it',
+    async () => {
+      await testApiHandler({
+        appHandler: creditsRoute,
+        url: '/api/ext/credits/test',
+        paramsPatcher: (params) => {
+          params.studentId = 'test';
+        },
+        test: async ({ fetch }) => {
+          const denied = await fetch();
+          // Regression: a NextResponse wrongly passed through extEnvelope
+          // produced `{}` + 200 instead.
+          expect(denied.status).toBe(401);
+          const body = await denied.json();
+          expect(body.code).toBe('EXT_KEY_REQUIRED');
+          expect(body.error).toContain('x-api-key');
+
+          const ok = await fetch({ headers: { 'x-api-key': 'k1' } });
+          expect(ok.status).toBe(200);
+          const data = await ok.json();
+          expect(data.credits).toBe(500);
+        },
+      });
+    });
 });
 
 describe('CSRF guard (requireSameOrigin)', () => {
