@@ -2,7 +2,6 @@ import { json } from '@/lib/respond';
 import {
   buildTokenUrl,
   generateAccessKey,
-  shortenUrl,
   getReusableToken,
   upsertTokenForUser,
 } from '@/lib/ext/earn';
@@ -13,7 +12,11 @@ import { extRoute } from '@/lib/ext/route';
 
 export const runtime = 'nodejs';
 
-/* POST /api/ext/earn/generate — was POST /api/earn/generate-token. */
+/* POST /api/ext/earn/generate — referral claim link. The Cuty shortener
+ * was removed: this now returns the DIRECT claim URL as `shortUrl`
+ * (field name kept so extension UIs need no changes):
+ *   `<BASE_URL>/token/<token>?key=<accessKey>`
+ * Set BASE_URL on Heroku so links carry the public host. */
 export async function POST(req) {
   const { config, origin, response } = await extRoute(req, 'earnGenerate');
   if (response) return response;
@@ -48,45 +51,23 @@ export async function POST(req) {
         reusableToken.accessKey = accessKey;
         reusableToken.shortUrl = '';
       }
-      const existingLongUrl = buildTokenUrl(ext.BASE_URL, reusableToken.token, accessKey);
-      if (reusableToken.shortUrl) {
-        return json(
-          { shortUrl: reusableToken.shortUrl, reused: true },
-          { origin },
-        );
-      }
-      const shortResult = await shortenUrl(ext, existingLongUrl);
-      if (!shortResult.usedCuty) {
-        await reusableToken.save();
-        return json(
-          {
-            error: 'Shortener unavailable. Please try again later.',
-            code: 'SHORTENER_UNAVAILABLE',
-          },
-          { status: 503, origin },
-        );
-      }
-      reusableToken.shortUrl = shortResult.shortUrl;
       await reusableToken.save();
-      return json({ shortUrl: shortResult.shortUrl, reused: true }, { origin });
+      return json(
+        {
+          shortUrl: buildTokenUrl(ext.BASE_URL, reusableToken.token, accessKey),
+          reused: true,
+        },
+        { origin },
+      );
     }
 
     const tokenDoc = await upsertTokenForUser(userId, 3);
-    const longUrl = buildTokenUrl(ext.BASE_URL, tokenDoc.token, tokenDoc.accessKey);
-    const shortResult = await shortenUrl(ext, longUrl);
-    if (!shortResult.usedCuty) {
-      await tokenDoc.save();
-      return json(
-        {
-          error: 'Shortener unavailable. Please try again later.',
-          code: 'SHORTENER_UNAVAILABLE',
-        },
-        { status: 503, origin },
-      );
-    }
-    tokenDoc.shortUrl = shortResult.shortUrl;
-    await tokenDoc.save();
-    return json({ shortUrl: shortResult.shortUrl }, { status: 201, origin });
+    return json(
+      {
+        shortUrl: buildTokenUrl(ext.BASE_URL, tokenDoc.token, tokenDoc.accessKey),
+      },
+      { status: 201, origin },
+    );
   } catch (err) {
     return extError(err, origin);
   }

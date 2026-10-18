@@ -45,7 +45,7 @@ while community routes keep working.
 | GET | `/api/ext/privacy/:studentId` | — | `{hideName, hidePhoto}` |
 | POST | `/api/ext/privacy` | — | `{studentId, hideName, hidePhoto}` upsert |
 | POST | `/api/ext/cookies/save` | — | OAuth cookie jar (10 MB body) → 201 |
-| POST | `/api/ext/earn/generate` | 10/m | `{userId}` → `{shortUrl}` (Cuty) or 503 |
+| POST | `/api/ext/earn/generate` | 10/m | `{userId}` → `{shortUrl}` direct claim link |
 | GET | `/api/ext/earn/verify/:token?key=` | 30/m | claims credits → `{success, credits}` |
 | GET | `/api/ext/earn/credits/:userId` | — | earn balance |
 | POST | `/api/ext/admin/login` | — | `{username, password}` → `{token}` (24h) |

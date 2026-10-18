@@ -77,7 +77,6 @@ export default async function AdminHealthPage() {
     ['SUPABASE_SERVICE_ROLE_KEY', !!process.env.SUPABASE_SERVICE_ROLE_KEY],
     ['MONGODB_URI', !!config.mongoUri],
     ['ADMIN_PASSWORD', !!process.env.ADMIN_PASSWORD],
-    ['CUTY_API_TOKEN', !!config.cutyToken],
     ['BASE_URL', config.publicBaseUrl || '(unset)'],
   ];
 
