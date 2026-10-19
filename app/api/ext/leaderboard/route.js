@@ -39,15 +39,22 @@ export async function GET(req) {
     }
     const grades = await getLeaderboard(courseName, studentId || null);
     if (studentId) {
-      try {
-        const updated = await deductCredit(studentId);
-        return json(
-          { grades, remainingCredits: updated.credits },
-          { origin },
-        );
-      } catch (_) {
-        return json({ grades }, { origin });
+      // Only charge when the view actually showed classmates — a self-only
+      // result means nobody else has posted grades yet; charging there
+      // drains credits for nothing.
+      const hasClassmates = grades.length > 1;
+      if (hasClassmates) {
+        try {
+          const updated = await deductCredit(studentId);
+          return json(
+            { grades, remainingCredits: updated.credits },
+            { origin },
+          );
+        } catch (_) {
+          return json({ grades }, { origin });
+        }
       }
+      return json({ grades, free: true }, { origin });
     }
     return json({ grades }, { origin });
   } catch (err) {
