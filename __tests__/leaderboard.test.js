@@ -23,9 +23,16 @@ describe('course-key normalization', () => {
 
   test('different courses never collide', () => {
     expect(sameCourse('Data Structures', 'Database Systems')).toBe(false);
-    // "- Lab" variants collapse to the base course.
+    // "- Lab" stays DISTINCT: lab and theory are separate courses.
     expect(canonicalCourseKey('Digital Logic and Design - Lab'))
-        .toBe('digital logic and design');
+        .toBe('digital logic and design - lab');
+    expect(
+      sameCourse('DATA STRUCTURES', 'Data Structures - Lab'),
+    ).toBe(false);
+    // Sectioned and bare names are the same course.
+    expect(
+      sameCourse('DATA STRUCTURES', 'Data Structures (CP233-R26-BS-SE-F24-SED1)'),
+    ).toBe(true);
   });
 
   test('section extraction and bare-name filter', () => {
@@ -35,14 +42,14 @@ describe('course-key normalization', () => {
     expect(bareCourseName('OOP (CP223)')).toBe('OOP');
     // The regex matches both stored forms.
     const f = courseNameFilter('Data Structures (CP233)');
-    expect(f.courseName.$regex).toContain('Data\\ Structures');
+    const re = new RegExp(f.courseName.$regex, 'i');
     for (const ok of [
       'Data Structures',
       'data structures',
       'Data Structures (CP233-R26-BS-SE-F24-SED1)',
     ]) {
-      expect(ok, matches(f.courseName.$regex));
+      expect(re.test(ok)).toBe(true);
     }
-    expect('Database Systems (DB203)', isNot(matches(f.courseName.$regex)));
+    expect(re.test('Database Systems (DB203)')).toBe(false);
   });
 });
