@@ -7,7 +7,7 @@ import {
 import { leaderboardQuerySchema } from '@/lib/ext/schemas';
 import { extRoute } from '@/lib/ext/route';
 import { SubjectGroup } from '@/lib/ext/models';
-import { bareCourseName, escapeRegex } from '@/lib/ext/course-key';
+import { bareCourseName, escapeRegex, courseNameVariantsFilter } from '@/lib/ext/course-key';
 
 export const runtime = 'nodejs';
 
@@ -27,10 +27,7 @@ export async function GET(req) {
   const { courseName, studentId } = checked.value;
   try {
     const groups = await SubjectGroup.find({
-      courseName: {
-        $regex: `^${escapeRegex(bareCourseName(courseName))}\\s*(\\(|$)`,
-        $options: 'i',
-      },
+      ...courseNameVariantsFilter(courseName),
     })
       .select('courseName studentIds')
       .lean();
