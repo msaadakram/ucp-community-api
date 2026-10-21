@@ -8,6 +8,7 @@ import {
   extError,
 } from '@/lib/ext/validate';
 import { extRoute } from '@/lib/ext/route';
+import { rateLimit, callerKey } from '@/lib/ext/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -29,6 +30,21 @@ export async function GET(req) {
   // never spends the extension's credits (app-only users never earn
   // them, so charging them would end in a dead "no credits" screen).
   const isApp = source === 'app';
+  // Free app views are otherwise unbounded — cap them per student/IP so
+  // one caller cannot exhaust the shared database.
+  const gate = isApp
+    ? rateLimit(callerKey(req, studentId), { limit: 180 })
+    : { ok: true, retryAfterMs: 0 };
+  if (!gate.ok) {
+    return json(
+      {
+        error: 'Too many leaderboard requests — try again shortly.',
+        code: 'RATE_LIMITED',
+        retryAfterMs: gate.retryAfterMs,
+      },
+      { status: 429, origin },
+    );
+  }
   try {
     if (studentId && !isApp) {
       try {
