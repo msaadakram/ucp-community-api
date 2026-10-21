@@ -8,7 +8,9 @@
     "build": "next build",
     "heroku-postbuild": "next build",
     "start": "next start -p ${PORT:-3000}",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "deploy": "bash scripts/deploy.sh",
+    "deploy:check": "bash scripts/deploy.sh --check"
   },
   "engines": {
     "node": ">=20"

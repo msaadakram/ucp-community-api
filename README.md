@@ -101,10 +101,10 @@ Extension env (optional — ext routes 503 without `MONGODB_URI`):
 `MONGODB_URI`, `CREDITS_REWARD=50`, `BASE_URL` (public host, used in
 referral links), `CUTY_API_TOKEN`, `CUTY_API_BASE_URL`, `CUTY_TIMEOUT_MS`.
 
-## Extension cutover (client)
+## Extension cutover (client) — DONE
 
-The shipped v2.2.0 extension needs only a base-URL + prefix change
-(ship as v2.3.0, keep `gradeserver-rho` live until adoption flips):
+The extension now talks to this same deployment. It needs only a base-URL
++ prefix change (shipped):
 
 - `src/config.js` `API_BASE_URL` → combined host
   (`https://ucp.animezone.me`); same in
@@ -119,9 +119,12 @@ The shipped v2.2.0 extension needs only a base-URL + prefix change
   `/api/earn/...` → `/api/ext/earn/...`.
 - Referral links now render as `<host>/token/<token>?key=...`
   (server builds them from `BASE_URL`).
-- `manifest.json` host_permissions: replace the two
-  `gradeserver-rho` / `extention-server-two` entries with the combined
-  host.
+- `manifest.json` host_permissions: the two `gradeserver-rho` /
+  `extention-server-two` entries are REPLACED by the combined host
+  (`https://ucp.animezone.me/*`). This is required — without the host
+  permission Chrome blocks every call to the new backend.
+- `homepage_url` and the policy link point at the same host
+  (`/policy` is served by this deployment).
 
 ## Push to GitHub (new repo)
 
@@ -164,19 +167,41 @@ CNAME → `curved-muskmelon-7lb7bf5so88opw08qeaz4p4m.herokudns.com`,
 Point Flutter at it:
 `flutter build apk --release --dart-define=NODE_API_URL=https://ucp.animezone.me`
 
-## Deploy to Vercel
+## Retired deployments (do not redeploy)
 
-1. **vercel.com → Add New → Project → Import** the repo (framework
-   auto-detects Next.js; no Root Directory / build tweaks needed).
-2. **Settings → Environment Variables**, add for Production (and Preview):
-   - `SUPABASE_URL` = `https://xyzcompany.supabase.co`
-   - `SUPABASE_SERVICE_ROLE_KEY` = `eyJhbG…` (service_role — server only)
-   - `ODOO_BASE` = `https://horizon.ucp.edu.pk`
-   - `CORS_ORIGIN` = `*` (pilot) or your exact origins
-3. **Deploy.** Open `https://<your-app>.vercel.app/api/health` → `{"ok":true}`.
-4. **Verify session gating:** `GET /api/me` without header → `401`.
-5. Point the Flutter app at it:
-   `flutter build apk --release --dart-define=NODE_API_URL=https://<your-app>.vercel.app`
+These are **retired** — the whole system now runs on the single Heroku
+deployment above. All of them already answer `402 DEPLOYMENT_DISABLED`:
+
+| Deployment | Was | Now |
+|---|---|---|
+| `gradeserver-rho.vercel.app` | the extension's own Express server (`extention-server/`) | merged into `/api/ext/*` here |
+| `extention-server-two.vercel.app` | a second copy of the extension server | merged into `/api/ext/*` here |
+| `ucp-community-api.vercel.app` | the community API | merged into this repo |
+
+The old `extention-server/` repository is **retired**: its service code
+lives in `lib/ext/*` here and its routes in `app/api/ext/*`. Do not deploy
+it again — a second server means a second database view, split rosters and
+split leaderboards.
+
+## One backend — the rules
+
+1. **One deployment.** `ucp-campus-community` on Heroku serves the app, the
+   extension and the admin panel. `GET /api/health` reports every surface
+   it owns (`serves.app`, `serves.extension`, `serves.admin`).
+2. **One host for every client.** `https://ucp.animezone.me` — the app's
+   `NODE_API_URL` default and the extension's `API_BASE_URL` + manifest
+   `host_permissions` must both point here. No second domain, ever.
+3. **One identity layer.** `lib/ext/identity.js` (student id + section
+   code) is shared by every write and read, so app-only, extension-only
+   and dual users land on the same records.
+4. **One database.** `MONGODB_URI` on Heroku is the only database.
+
+Deploy + verify in one command:
+
+```bash
+npm run deploy          # push to Heroku, wait, hit /api/health
+npm run deploy:check    # verify every client points at this host
+```
 
 ## Vercel notes (read once)
 
