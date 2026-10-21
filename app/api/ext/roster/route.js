@@ -35,11 +35,20 @@ export async function GET(req) {
     // Section code scopes the roster so a course's theory and lab
     // sections are never merged.
     const codeRe = courseSectionCodeFilter(courseCode);
-    const groups = await SubjectGroup.find({
+    let groups = await SubjectGroup.find({
       ...(codeRe ? { courseName: codeRe } : courseNameVariantsFilter(courseName)),
     })
       .select('courseName studentIds')
       .lean();
+    if (!groups.length && codeRe) {
+      // No group carries that section code — fall back to the name
+      // variants rather than reporting an empty roster.
+      groups = await SubjectGroup.find({
+        ...courseNameVariantsFilter(courseName),
+      })
+        .select('courseName studentIds')
+        .lean();
+    }
 
     const ids = new Set();
     const sections = new Set();
