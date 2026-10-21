@@ -21,11 +21,16 @@ export async function GET(req) {
     courseName: url.searchParams.get('courseName'),
     studentId: url.searchParams.get('studentId') || undefined,
     courseCode: url.searchParams.get('courseCode') || undefined,
+    source: url.searchParams.get('source') || undefined,
   });
   if (checked.response) return extEnvelope(checked.response, origin);
-  const { courseName, studentId, courseCode } = checked.value;
+  const { courseName, studentId, courseCode, source } = checked.value;
+  // The app is a first-party, free client: viewing a leaderboard there
+  // never spends the extension's credits (app-only users never earn
+  // them, so charging them would end in a dead "no credits" screen).
+  const isApp = source === 'app';
   try {
-    if (studentId) {
+    if (studentId && !isApp) {
       try {
         const creditRecord = await getCredits(studentId);
         if (creditRecord.credits < 1) {
@@ -43,6 +48,9 @@ export async function GET(req) {
       studentId || null,
       courseCode || null,
     );
+    if (isApp) {
+      return json({ grades, free: true }, { origin });
+    }
     if (studentId) {
       // Only charge when the view actually showed classmates — a self-only
       // result means nobody else has posted grades yet; charging there

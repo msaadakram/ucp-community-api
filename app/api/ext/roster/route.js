@@ -7,12 +7,7 @@ import {
 import { leaderboardQuerySchema } from '@/lib/ext/schemas';
 import { extRoute } from '@/lib/ext/route';
 import { SubjectGroup } from '@/lib/ext/models';
-import {
-  bareCourseName,
-  escapeRegex,
-  courseNameVariantsFilter,
-  courseSectionCodeFilter,
-} from '@/lib/ext/course-key';
+import { findRosterGroups } from '@/lib/ext/roster';
 
 export const runtime = 'nodejs';
 
@@ -34,21 +29,12 @@ export async function GET(req) {
   try {
     // Section code scopes the roster so a course's theory and lab
     // sections are never merged.
-    const codeRe = courseSectionCodeFilter(courseCode);
-    let groups = await SubjectGroup.find({
-      ...(codeRe ? { courseName: codeRe } : courseNameVariantsFilter(courseName)),
-    })
-      .select('courseName studentIds')
-      .lean();
-    if (!groups.length && codeRe) {
-      // No group carries that section code — fall back to the name
-      // variants rather than reporting an empty roster.
-      groups = await SubjectGroup.find({
-        ...courseNameVariantsFilter(courseName),
-      })
-        .select('courseName studentIds')
-        .lean();
-    }
+    // Same lookup the leaderboard uses: exact section first, then the
+    // section code inside the stored name, then the course-name variants.
+    const groups = await findRosterGroups({
+      courseName,
+      courseCode,
+    });
 
     const ids = new Set();
     const sections = new Set();
