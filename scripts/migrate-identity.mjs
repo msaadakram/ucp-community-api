@@ -121,34 +121,44 @@ async function main() {
   );
 
   if (!DRY) {
-    // Replace every group with the canonical set.
-    const keep = new Set();
+    // Replace every group with the canonical set. The legacy groups are
+    // wiped FIRST: they are keyed by the raw course name, so inserting a
+    // canonical group with the same name/day/time would hit the legacy
+    // unique index. Their members were already folded into the canonical
+    // map above, so nothing is lost.
+    await groups.deleteMany({});
+
+    // Safety: the legacy unique index is (courseName, day, time,
+    // teacher) — two canonical groups must never share that tuple.
+    const byRaw = new Map();
+    const docs = [];
     for (const [key, g] of canonical) {
+      const raw = [g.courseName, g.day, g.time, g.teacher].join('||');
+      const existing = byRaw.get(raw);
+      if (existing) {
+        for (const m of g.members) existing.studentIds.add(m);
+        continue;
+      }
       const doc = {
         courseName: g.courseName,
         day: g.day,
         time: g.time,
         teacher: g.teacher || '',
-        studentIds: [...g.members],
+        studentIds: new Set(g.members),
         groupKey: key,
         sectionKey: g.sectionKey,
-        courseKey: g.courseKey,
+        courseKey: canonicalCourseKey(g.courseName),
       };
-      const res = await groups.findOneAndUpdate(
-        { groupKey: key },
-        { $set: doc },
-        { upsert: true, new: true },
-      );
-      if (res && res._id) keep.add(String(res._id));
+      byRaw.set(raw, doc);
+      docs.push(doc);
     }
-    // Drop legacy (name-keyed) groups and empty ones.
-    const removed = await groups.deleteMany({
-      $or: [
-        { groupKey: { $in: ['', null] } },
-        { _id: { $nin: [...keep].map((id) => new mongoose.Types.ObjectId(id)) } },
-      ],
-    });
-    console.log(`groups rewritten, legacy/empty removed: ${removed.deletedCount}`);
+    if (docs.length) {
+      await groups.insertMany(
+        docs.map((d) => ({ ...d, studentIds: [...d.studentIds] })),
+        { ordered: false },
+      );
+    }
+    console.log(`groups rewritten: ${docs.length}`);
   }
 
   // ---------------------------------------------------------------- 2/4
