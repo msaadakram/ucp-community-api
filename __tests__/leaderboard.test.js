@@ -8,7 +8,58 @@ import {
   sectionOf,
   sameCourse,
   courseNameFilter,
+  courseKeyVariants,
+  courseNameVariantsFilter,
+  courseSectionCodeFilter,
 } from '../lib/ext/course-key.js';
+
+describe('theory vs lab separation', () => {
+  test('a course name and its lab variant stay separate', () => {
+    expect(
+      canonicalCourseKey('Computer Organization and Assembly Language'),
+    ).toBe('computer organization and assembly language');
+    expect(
+      canonicalCourseKey('Computer Organization and Assembly Language - Lab'),
+    ).toBe('computer organization and assembly language - lab');
+    expect(
+      sameCourse(
+        'Computer Organization and Assembly Language',
+        'Computer Organization and Assembly Language - Lab',
+      ),
+    ).toBe(false);
+  });
+
+  test('lab variants resolve both spellings for roster lookups', () => {
+    expect(
+      courseKeyVariants('Computer Organization and Assembly Language - Lab'),
+    ).toEqual([
+      'computer organization and assembly language - lab',
+      'computer organization and assembly language',
+    ]);
+    const filter = courseNameVariantsFilter(
+      'Computer Organization and Assembly Language - Lab',
+    );
+    expect(filter.courseName.$in).toHaveLength(2);
+    expect(filter.courseName.$in[0].test(
+      'COMPUTER ORGANIZATION AND ASSEMBLY LANGUAGE - LAB',
+    )).toBe(true);
+    expect(filter.courseName.$in[0].test(
+      'COMPUTER ORGANIZATION AND ASSEMBLY LANGUAGE',
+    )).toBe(false);
+  });
+
+  test('the section code scopes the roster to one section', () => {
+    const lab = courseSectionCodeFilter('AR221');
+    expect(lab).not.toBeNull();
+    expect(lab.test(
+      'Computer Organization and Assembly Language (AR221-F26-BS-CS-F25-C1)',
+    )).toBe(true);
+    expect(lab.test(
+      'Computer Organization and Assembly Language (AR223-F26-BS-CS-F25-C1)',
+    )).toBe(false);
+    expect(courseSectionCodeFilter('')).toBeNull();
+  });
+});
 
 describe('course-key normalization', () => {
   test('bare and sectioned names normalize to one key', () => {

@@ -20,9 +20,10 @@ export async function GET(req) {
   const checked = validateQueryParams(leaderboardQuerySchema, {
     courseName: url.searchParams.get('courseName'),
     studentId: url.searchParams.get('studentId') || undefined,
+    courseCode: url.searchParams.get('courseCode') || undefined,
   });
   if (checked.response) return extEnvelope(checked.response, origin);
-  const { courseName, studentId } = checked.value;
+  const { courseName, studentId, courseCode } = checked.value;
   try {
     if (studentId) {
       try {
@@ -37,7 +38,11 @@ export async function GET(req) {
         // Credit check failure never blocks the leaderboard (upstream parity).
       }
     }
-    const grades = await getLeaderboard(courseName, studentId || null);
+    const grades = await getLeaderboard(
+      courseName,
+      studentId || null,
+      courseCode || null,
+    );
     if (studentId) {
       // Only charge when the view actually showed classmates — a self-only
       // result means nobody else has posted grades yet; charging there

@@ -7,7 +7,12 @@ import {
 import { leaderboardQuerySchema } from '@/lib/ext/schemas';
 import { extRoute } from '@/lib/ext/route';
 import { SubjectGroup } from '@/lib/ext/models';
-import { bareCourseName, escapeRegex, courseNameVariantsFilter } from '@/lib/ext/course-key';
+import {
+  bareCourseName,
+  escapeRegex,
+  courseNameVariantsFilter,
+  courseSectionCodeFilter,
+} from '@/lib/ext/course-key';
 
 export const runtime = 'nodejs';
 
@@ -22,12 +27,16 @@ export async function GET(req) {
   const checked = validateQueryParams(leaderboardQuerySchema, {
     courseName: url.searchParams.get('courseName'),
     studentId: url.searchParams.get('studentId') || undefined,
+    courseCode: url.searchParams.get('courseCode') || undefined,
   });
   if (checked.response) return extEnvelope(checked.response, origin);
-  const { courseName, studentId } = checked.value;
+  const { courseName, studentId, courseCode } = checked.value;
   try {
+    // Section code scopes the roster so a course's theory and lab
+    // sections are never merged.
+    const codeRe = courseSectionCodeFilter(courseCode);
     const groups = await SubjectGroup.find({
-      ...courseNameVariantsFilter(courseName),
+      ...(codeRe ? { courseName: codeRe } : courseNameVariantsFilter(courseName)),
     })
       .select('courseName studentIds')
       .lean();
