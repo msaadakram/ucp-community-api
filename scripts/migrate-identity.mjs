@@ -158,7 +158,13 @@ async function main() {
         { ordered: false },
       );
     }
-    console.log(`groups rewritten: ${docs.length}`);
+    // Empty groups (everyone left the section) are noise — drop them.
+    const empties = await groups.deleteMany({
+      studentIds: { $size: 0 },
+    });
+    console.log(
+      `groups rewritten: ${docs.length} | empty groups removed: ${empties.deletedCount}`,
+    );
   }
 
   // ---------------------------------------------------------------- 2/4
