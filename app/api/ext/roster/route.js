@@ -46,6 +46,12 @@ export async function GET(req) {
     const classmates = studentId
       ? [...ids].filter((id) => id !== studentId)
       : [...ids];
+    // The raw ids of the whole class are NOT returned by default — the
+    // UI only needs the counts. A caller that genuinely needs them must
+    // ask for them explicitly.
+    const includeIds =
+      url.searchParams.get('includeIds') === '1' ||
+      url.searchParams.get('includeIds') === 'true';
     return json(
       {
         courseName,
@@ -53,9 +59,7 @@ export async function GET(req) {
         rosterSize: ids.size,
         classmates: classmates.length,
         youAreIn: studentId ? ids.has(studentId) : false,
-        // Ids are only exposed to the extension/app that owns them;
-        // the count is what the UI shows.
-        studentIds: studentId ? classmates : undefined,
+        studentIds: includeIds && studentId ? classmates : undefined,
       },
       { origin },
     );
