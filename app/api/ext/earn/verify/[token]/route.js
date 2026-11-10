@@ -66,18 +66,24 @@ export async function GET(req, { params }) {
         { status: 403, origin },
       );
     }
-    if (rewardToken.used) {
+    // Claim atomically: exactly ONE claimant wins; the token is burned
+    // BEFORE credits are granted, so a failure after the flip cannot be
+    // replayed for unlimited grants.
+    const claimed = await RewardToken.findOneAndUpdate(
+      { token: pChecked.value.token.trim(), used: false },
+      { $set: { used: true, usedAt: new Date() } },
+      { new: true },
+    );
+    if (!claimed) {
       return json(
         { error: 'Token has already been used', code: 'TOKEN_ALREADY_USED' },
         { status: 400, origin },
       );
     }
     const creditResult = await addCredits(
-      rewardToken.userId,
+      claimed.userId,
       ext.CREDITS_REWARD,
     );
-    rewardToken.used = true;
-    await rewardToken.save();
     return json(
       {
         success: true,

@@ -5,6 +5,7 @@
 import { listCookieSessions } from '@/lib/ext/cookies';
 import { requireAdminPage, fmtDate } from '../admin-lib';
 import { Shell } from '../admin-shell';
+import { DeleteJarButton, PurgeAllButton } from './purge-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,16 +25,28 @@ export default async function AdminCookiesPage({ searchParams }) {
 
   return (
     <Shell username={username} active="cookies">
-      <h2 style={{ margin: '0 0 4px' }}>Cookie sessions</h2>
-      <div className="muted" style={{ marginBottom: 16 }}>
-        {data.total} captures · jars hidden in the list — open a row to
-        inspect (and reveal) one jar at a time.
+      <div className="row-between" style={{ marginBottom: 12 }}>
+        <div>
+          <h2 style={{ margin: '0 0 4px' }}>Cookie sessions</h2>
+          <div className="muted">
+            {data.total} captures · jars hidden in the list — open a row to
+            inspect (and reveal) one jar at a time.
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {sp?.studentId ? (
+            <PurgeAllButton studentId={sp.studentId} />
+          ) : (
+            <PurgeAllButton />
+          )}
+        </div>
       </div>
       <form className="toolbar" method="get" action="/admin/cookies">
         <select name="phase" defaultValue={sp?.phase || ''}>
           <option value="">all phases</option>
           <option value="oauth_start">oauth_start</option>
           <option value="oauth_complete">oauth_complete</option>
+          <option value="app_session">app_session</option>
         </select>
         <input
           name="studentId"
@@ -80,7 +93,8 @@ export default async function AdminCookiesPage({ searchParams }) {
               <td>{s.cookieCount}</td>
               <td>{fmtDate(s.capturedAt)}</td>
               <td>
-                <a href={`/admin/cookies/${String(s._id)}`}>Inspect →</a>
+                <a href={`/admin/cookies/${String(s._id)}`}>Inspect →</a>{' '}
+                <DeleteJarButton id={String(s._id)} />
               </td>
             </tr>
           ))}

@@ -35,6 +35,8 @@ describe('rate limit', () => {
       headers: { 'x-forwarded-for': '10.0.0.1, 10.0.0.2' },
     });
     expect(callerKey(req, 'L1TEST')).toBe('L1TEST');
-    expect(callerKey(req, '')).toBe('ip:10.0.0.1');
+    // The LEFT-most XFF hop is attacker-controlled; the edge appends
+    // the caller's IP LAST. We limit by the right-most.
+    expect(callerKey(req, '')).toBe('ip:10.0.0.2');
   });
 });

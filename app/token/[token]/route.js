@@ -27,12 +27,11 @@ const TOKEN_HTML = `<!DOCTYPE html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Claim Your Credits</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -184,6 +183,10 @@ const TOKEN_HTML = `<!DOCTYPE html>
       background: rgba(239, 68, 68, 0.1);
       box-shadow: 0 0 40px rgba(239, 68, 68, 0.15), inset 0 0 20px rgba(239, 68, 68, 0.05);
     }
+    .icon-circle.prompt {
+      background: rgba(167, 139, 250, 0.1);
+      box-shadow: 0 0 40px rgba(167, 139, 250, 0.18), inset 0 0 20px rgba(167, 139, 250, 0.06);
+    }
     @keyframes popIn {
       0% { transform: scale(0); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
@@ -332,33 +335,24 @@ const TOKEN_HTML = `<!DOCTYPE html>
   <div class="wrapper">
     <div class="card">
 
-      <!-- === LOADING STATE === -->
-      <div id="state-loading">
+      <!-- === CLAIM STATE === -->
+      <div id="state-prompt">
+        <div class="icon-circle prompt">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2l2.4 4.8 5.3.8-3.8 3.7.9 5.3L12 14.6 7.1 16.6l.9-5.3-3.8-3.7 5.3-.8L12 2z"/>
+          </svg>
+        </div>
+        <h1>You have a reward</h1>
+        <p class="subtitle">Tap below to claim it. The token works once — it cannot be used twice.</p>
+        <button id="claim-btn" class="cta-btn" type="button" style="border:none;cursor:pointer;">Claim 50 credits</button>
+        <p class="countdown-text">Only the tap claims credits — nothing happens on page load.</p>
+      </div>
+
+      <!-- === VERIFYING STATE === -->
+      <div id="state-verifying" class="hidden">
         <div class="spinner-ring"><div class="pulse-dot"></div></div>
         <h1>Verifying your reward</h1>
         <p class="subtitle">Please wait while we confirm your token...</p>
-      </div>
-
-      <!-- === SUCCESS STATE === -->
-      <div id="state-success" class="hidden">
-        <div class="icon-circle success">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 13l4 4L19 7"/>
-          </svg>
-        </div>
-        <h1>Credits Added!</h1>
-        <p class="subtitle" id="success-msg">Credits have been added to your account.</p>
-        <div class="credit-badge">
-          <div class="coin-icon">+</div>
-          <div>
-            <div class="amount" id="credit-total">0</div>
-            <div class="label">Total Credits</div>
-          </div>
-        </div>
-        <div class="countdown-bar">
-          <div class="countdown-bar-fill"></div>
-        </div>
-        <p class="countdown-text">Redirecting in 3 seconds...</p>
       </div>
 
       <!-- === ERROR STATE === -->
@@ -380,17 +374,24 @@ const TOKEN_HTML = `<!DOCTYPE html>
 
   <script>
     (function () {
-      var loadingEl = document.getElementById("state-loading");
+      var promptEl = document.getElementById("state-prompt");
+      var verifyingEl = document.getElementById("state-verifying");
       var successEl = document.getElementById("state-success");
       var errorEl = document.getElementById("state-error");
 
       function show(state) {
-        loadingEl.classList.add("hidden");
+        promptEl.classList.add("hidden");
+        verifyingEl.classList.add("hidden");
         successEl.classList.add("hidden");
         errorEl.classList.add("hidden");
+        if (state === "verifying") verifyingEl.classList.remove("hidden");
         if (state === "success") successEl.classList.remove("hidden");
         if (state === "error") errorEl.classList.remove("hidden");
       }
+
+      document.getElementById("claim-btn").addEventListener("click", function () {
+        verify();
+      });
 
       function spawnParticles() {
         var container = document.getElementById("particles");
@@ -412,7 +413,8 @@ const TOKEN_HTML = `<!DOCTYPE html>
         }
       }
 
-      (async function verify() {
+      async function verify() {
+        show("verifying");
         try {
           var params = new URLSearchParams(window.location.search);
           var accessKey = params.get("key");
@@ -452,7 +454,7 @@ const TOKEN_HTML = `<!DOCTYPE html>
           document.getElementById("error-msg").textContent =
             "Could not reach the server. Please check your connection and try again.";
         }
-      })();
+      }
     })();
   </script>
 </body>

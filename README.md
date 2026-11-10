@@ -1,4 +1,4 @@
-# UCP Campus Combined API (Next.js, Vercel-ready)
+# UCP Campus Combined API (Next.js, Heroku)
 
 One server for both clients: the UCP Campus Flutter app (community:
 posts, votes, comments, uploads, teachers, SSE) **and** the UCP Live
@@ -59,7 +59,7 @@ while community routes keep working.
 | POST | `/api/ext/admin/credits-adjust` | cookie | `{studentId, amount -1000..1000}` grant/revoke |
 | GET | `/api/ext/admin/migrate-preview?dry=1` | cookie | bump-credits dry-run, `dry=0` executes |
 
-Extension rate limits mirror the old server (write 30/m, read 60/m,
+Extension rate limits (in-memory per instance): (write 30/m, read 60/m,
 earn-generate 10/m, earn-verify 30/m — per-instance, same caveat as the
 community limiter).
 
@@ -74,17 +74,19 @@ Login at `/admin/login` (cookie session, httpOnly, 24h). Pages:
 | `/admin/grades` | search grades by course/student, privacy flags |
 | `/admin/leaderboard` | inspect classmate scoping per course (read-only, no credits touched) |
 | `/admin/timetable` | search timetable rows, class-group counts |
-| `/admin/cookies` | paged OAuth sessions (**jars hidden in list**); per-row inspect with click-to-reveal masked jar (first 6 chars) |
+| `/admin/cookies` | paged OAuth sessions (**jars hidden in list**); per-row masked reveal; per-row **Delete**; bulk **Purge all** / scoped per student |
+| `DELETE /api/ext/admin/cookies[/:id]` | cookie + same-origin | delete one jar / purge vault (typed confirmation) |
 | `/admin/credits` | top-20 balances, student lookup, grant/revoke ±1000 |
 | `/admin/earn` | referral token inventory (active/claimed) |
 | `/admin/migrate` | bump-credits dry-run preview + guarded execute |
 | `/admin/health` | live Supabase/Mongo/Odoo probes + env presence |
 
-**Production:** set `ADMIN_PASSWORD` env before first boot (overrides the
-seeded `admin/admin`; existing users untouched). Security headers
+**Production:** set `ADMIN_PASSWORD` env before first boot (existing users untouched). Security headers
 (`nosniff`, `DENY` framing, `no-referrer`, `no-store`) ship on
-`/admin/*` via `next.config.js`. Cookie is `httpOnly + SameSite=lax`
-(`Secure` in production).
+`/admin/*` via `next.config.js` (also `poweredByHeader: false`). The
+admin cookie is `httpOnly + SameSite=lax + Secure`. Admin Bearer tokens
+are stored as SHA-256 hashes in Mongo — a DB dump yields no usable
+sessions.
 
 Session travels as header `x-ucp-session` (query `?session_id=` also works).
 
@@ -97,9 +99,10 @@ npm test               # 35 tests (16 community + 19 ext), no network
 npm run dev            # → http://localhost:3000
 ```
 
-Extension env (optional — ext routes 503 without `MONGODB_URI`):
-`MONGODB_URI`, `CREDITS_REWARD=50`, `BASE_URL` (public host, used in
-referral links), `CUTY_API_TOKEN`, `CUTY_API_BASE_URL`, `CUTY_TIMEOUT_MS`.
+Extension env (ext routes 503 without these — required):
+`MONGODB_URI`, `EXT_API_KEY`, `COOKIE_VAULT_KEY`,
+`ADMIN_PASSWORD`, `CREDITS_REWARD=50`, `BASE_URL` (public host, used in
+referral links).
 
 ## Extension cutover (client) — DONE
 
@@ -203,16 +206,17 @@ npm run deploy          # push to Heroku, wait, hit /api/health
 npm run deploy:check    # verify every client points at this host
 ```
 
-## Vercel notes (read once)
+## Deployment notes (Heroku, single dyno)
 
-- **SSE lifetime:** serverless functions cap stream duration, so the app
-  auto-reconnects with backoff (already built into the Flutter client) —
-  updates may lag seconds on cold instances, never break.
-- **Fan-out is per-instance** (in-memory registry): perfect on a warm
-  single instance; across scaled-out instances use Upstash Redis pub/sub
-  or Supabase Realtime postgres-changes instead of `lib/events.js`.
-- **Rate limiting** here is best-effort per instance; Vercel's edge
-  absorbs real floods, and auth + validation + upload caps hold everywhere.
+- **SSE fan-out** is per-dyno (in-memory): perfect on the single `basic`
+  dyno; scaling out needs Upstash Redis pub/sub or Supabase Realtime
+  postgres-changes instead of `lib/events.js`.
+- **Rate limiting** is best-effort per instance — Heroku's router still
+  caps bandwidth; auth + validation + upload caps hold regardless.
+- **Cookies jar retention:** exactly one latest jar per studentId; jars
+  older than 90 days expire automatically (Mongo TTL index).
+- **Vault key REQUIRED:** without `COOKIE_VAULT_KEY` the `cookies/save`
+  route refuses to store (503) — never plaintext, never a weak key.
 
 ## Supabase prerequisites (one-time, in Supabase dashboard)
 

@@ -118,9 +118,9 @@ describe('ext API-key gate', () => {
 });
 
 describe('CSRF guard (requireSameOrigin)', () => {
-  test('browser same-origin passes, cross-site fails', () => {
+  test('browser same-origin passes, cross-site and same-site fail', () => {
     expect(requireSameOrigin(fakeReq({ site: 'same-origin' }))).toBe(true);
-    expect(requireSameOrigin(fakeReq({ site: 'same-site' }))).toBe(true);
+    expect(requireSameOrigin(fakeReq({ site: 'same-site' }))).toBe(false);
     expect(requireSameOrigin(fakeReq({ site: 'cross-site' }))).toBe(false);
   });
   test('non-browser callers can opt in via the custom header', () => {
@@ -174,7 +174,11 @@ describe('hash/verify round-trip', () => {
 
 describe('cookie vault encryption at rest', () => {
   beforeEach(() => {
-    process.env.EXT_API_KEY = 'vault-key-material';
+    process.env.COOKIE_VAULT_KEY = 'vault-key-material-32-bytes-long-000';
+    delete process.env.EXT_API_KEY;
+  });
+  afterEach(() => {
+    delete process.env.COOKIE_VAULT_KEY;
   });
 
   test('round-trip: stored value never contains the secret', () => {
@@ -204,8 +208,9 @@ describe('cookie vault encryption at rest', () => {
 
   test('wrong key material yields empty string, never a crash', () => {
     const sealed = encryptCookieValue('secret-xyz');
-    process.env.EXT_API_KEY = 'different-key-entirely';
-    // scrypt cache is keyed by material, so this derives a new key.
+    // Vault key is now INDEPENDENT of the (public) API key — rotate it
+    // and previously sealed rows read as empty, never as plaintext.
+    process.env.COOKIE_VAULT_KEY = 'a-different-vault-key-entirely';
     expect(decryptCookieValue(sealed)).toBe('');
   });
 

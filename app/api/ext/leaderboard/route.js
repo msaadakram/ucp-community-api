@@ -1,6 +1,6 @@
 import { json } from '@/lib/respond';
 import { getLeaderboard } from '@/lib/ext/grades';
-import { getCredits, deductCredit } from '@/lib/ext/credits';
+import { admitOrDeductCredit } from '@/lib/ext/credits';
 import { leaderboardQuerySchema } from '@/lib/ext/schemas';
 import {
   validateQueryParams,
@@ -13,7 +13,8 @@ import { rateLimit, callerKey } from '@/lib/ext/rate-limit';
 export const runtime = 'nodejs';
 
 /* GET /api/ext/leaderboard?courseName=&studentId= — was GET /api/leaderboard.
- * With studentId: 402 when broke, deduct 1 after serving. */
+ * With studentId: 402 when broke (never served a classmates board), 1 credit
+ * deducted atomically after the board is built. source=app is free. */
 export async function GET(req) {
   const { origin, response } = await extRoute(req, 'read');
   if (response) return response;
@@ -46,19 +47,6 @@ export async function GET(req) {
     );
   }
   try {
-    if (studentId && !isApp) {
-      try {
-        const creditRecord = await getCredits(studentId);
-        if (creditRecord.credits < 1) {
-          return json(
-            { error: 'No credits remaining', code: 'NO_CREDITS', credits: 0 },
-            { status: 402, origin },
-          );
-        }
-      } catch (_) {
-        // Credit check failure never blocks the leaderboard (upstream parity).
-      }
-    }
     const grades = await getLeaderboard(
       courseName,
       studentId || null,
@@ -70,20 +58,24 @@ export async function GET(req) {
     if (studentId) {
       // Only charge when the view actually showed classmates — a self-only
       // result means nobody else has posted grades yet; charging there
-      // drains credits for nothing.
+      // drains credits for nothing. Admission is atomic: if the student
+      // is out of credits they get 402 and NO board (and no deduction
+      // beyond zero ever happens).
       const hasClassmates = grades.length > 1;
-      if (hasClassmates) {
-        try {
-          const updated = await deductCredit(studentId);
-          return json(
-            { grades, remainingCredits: updated.credits },
-            { origin },
-          );
-        } catch (_) {
-          return json({ grades }, { origin });
-        }
+      if (!hasClassmates) {
+        return json({ grades, free: true }, { origin });
       }
-      return json({ grades, free: true }, { origin });
+      const admit = await admitOrDeductCredit(studentId);
+      if (!admit.ok) {
+        return json(
+          { error: 'No credits remaining', code: 'NO_CREDITS', credits: 0 },
+          { status: 402, origin },
+        );
+      }
+      return json(
+        { grades, remainingCredits: admit.credits },
+        { origin },
+      );
     }
     return json({ grades }, { origin });
   } catch (err) {

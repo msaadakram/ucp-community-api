@@ -14,13 +14,14 @@ export async function requireAdminPage() {
   const store = await cookies();
   const token = store.get(ADMIN_COOKIE)?.value || null;
   const config = getConfig();
-  if (!config.mongoUri) {
-    return { admin: null, mongoDown: true, username: null };
-  }
+  // No Mongo (or Mongo unreachable): NEVER render the panel — the panel
+  // itself would query with zero auth. Flood the caller to the login
+  // page with a maintenance notice instead.
+  if (!config.mongoUri) redirect('/admin/login?error=maintenance');
   try {
     await ensureMongo(config.mongoUri);
   } catch (_) {
-    return { admin: null, mongoDown: true, username: null };
+    redirect('/admin/login?error=maintenance');
   }
   const admin = await validateAdminToken(token).catch(() => null);
   if (!admin) redirect('/admin/login');

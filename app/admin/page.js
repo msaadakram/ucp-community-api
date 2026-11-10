@@ -13,23 +13,36 @@ import { Shell } from './admin-shell';
 export const dynamic = 'force-dynamic';
 
 async function mongoCounts() {
-  const [grades, timetables, groups, cookies, tokens, privacy, credits] =
-    await Promise.all([
-      Grade.countDocuments({ courseName: { $nin: ['__credits__', '__privacy__', '__earn_user__', '__earn_token__'] } }),
-      Timetable.countDocuments({}),
-      SubjectGroup.countDocuments({}),
-      CookieSession.countDocuments({}),
-      RewardToken.countDocuments({ used: false }),
-      Grade.countDocuments({ courseName: '__privacy__' }),
-      Grade.countDocuments({ courseName: '__credits__' }),
-    ]);
+  const [
+    grades,
+    timetables,
+    groups,
+    cookies,
+    tokens,
+    privacy,
+    credits,
+    recent,
+  ] = await Promise.all([
+    Grade.countDocuments({ courseName: { $nin: ['__credits__', '__privacy__', '__earn_user__', '__earn_token__'] } }),
+    Timetable.countDocuments({}),
+    SubjectGroup.countDocuments({}),
+    CookieSession.countDocuments({}),
+    RewardToken.countDocuments({ used: false }),
+    Grade.countDocuments({ courseName: '__privacy__' }),
+    Grade.countDocuments({ courseName: '__credits__' }),
+    CookieSession.find({})
+      .sort({ capturedAt: -1 })
+      .limit(6)
+      .select('studentId userEmail source phase capturedAt')
+      .lean(),
+  ]);
   const latest = await Grade.findOne({
     courseName: { $nin: ['__credits__', '__privacy__', '__earn_user__', '__earn_token__'] },
   })
     .sort({ timestamp: -1 })
     .select('timestamp courseName')
     .lean();
-  return { grades, timetables, groups, cookies, tokens, privacy, credits, latest };
+  return { grades, timetables, groups, cookies, tokens, privacy, credits, latest, recent };
 }
 
 async function communityCounts(config) {
@@ -52,31 +65,33 @@ async function communityCounts(config) {
 }
 
 export default async function AdminOverviewPage() {
-  const { username, mongoDown } = await requireAdminPage();
+  const { username } = await requireAdminPage();
   const config = getConfig();
   let m = null;
-  if (!mongoDown) {
-    try {
-      await ensureMongo(config.mongoUri);
-      m = await mongoCounts();
-    } catch (_) {
-      m = null;
-    }
+  try {
+    await ensureMongo(config.mongoUri);
+    m = await mongoCounts();
+  } catch (_) {
+    m = null;
   }
   const c = await communityCounts(config);
 
   return (
     <Shell username={username} active="overview">
-      <h2 style={{ margin: '0 0 4px' }}>Overview</h2>
-      <div className="muted" style={{ marginBottom: 16 }}>
-        Live counts from MongoDB (extension) + Supabase (community).
+      <div className="row-between">
+        <div>
+          <h2 style={{ margin: '0 0 4px' }}>Overview</h2>
+          <div className="muted">Live counts from MongoDB (extension) + Supabase (community).</div>
+        </div>
+        <a className="btn ghost" href="/admin/health">Run health checks</a>
       </div>
-      {mongoDown || !m ? (
-        <div className="error">
-          MongoDB unreachable — set <code className="mono">MONGODB_URI</code>{' '}
-          and restart. Extension panels below will show the same notice.
+      {!m ? (
+        <div className="error" style={{ marginTop: 12 }}>
+          MongoDB unreachable — set <code className="mono">MONGODB_URI</code> and restart,
+          then reload this page.
         </div>
       ) : null}
+
       <h3 className="muted">EXTENSION (MONGODB)</h3>
       <div className="grid">
         <div className="card">
@@ -95,9 +110,9 @@ export default async function AdminOverviewPage() {
           <div className="sub">{m ? `${m.groups} class groups` : '—'}</div>
         </div>
         <div className="card">
-          <h3>Cookie sessions</h3>
+          <h3>Session jars stored</h3>
           <div className="big">{m ? m.cookies : '—'}</div>
-          <div className="sub">OAuth capture vault</div>
+          <div className="sub">latest-sync vault · 90-day TTL</div>
         </div>
         <div className="card">
           <h3>Active earn tokens</h3>
@@ -115,6 +130,35 @@ export default async function AdminOverviewPage() {
           <div className="sub">500 on first touch</div>
         </div>
       </div>
+
+      {m && m.recent && m.recent.length > 0 ? (
+        <>
+          <h3 className="muted">LATEST SESSION CAPTURES</h3>
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Email</th>
+                <th>Phase</th>
+                <th>Source</th>
+                <th>Captured</th>
+              </tr>
+            </thead>
+            <tbody>
+              {m.recent.map((r, i) => (
+                <tr key={i}>
+                  <td><code className="mono">{r.studentId || '—'}</code></td>
+                  <td>{r.userEmail}</td>
+                  <td>{r.phase}</td>
+                  <td>{r.source}</td>
+                  <td>{fmtDate(r.capturedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      ) : null}
+
       <h3 className="muted">COMMUNITY (SUPABASE)</h3>
       <div className="grid">
         <div className="card">

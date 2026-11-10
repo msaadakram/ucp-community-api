@@ -5,6 +5,7 @@ import { getCookieSessionById } from '@/lib/ext/cookies';
 import { requireAdminPage, fmtDate } from '../../admin-lib';
 import { Shell } from '../../admin-shell';
 import JarReveal from './jar-reveal';
+import { DeleteJarButton } from '../purge-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +56,14 @@ export default async function AdminCookieDetailPage({ params }) {
       <table className="tbl" style={{ marginBottom: 14 }}>
         <tbody>
           <tr>
+            <th>Source / Phase</th>
+            <td className="muted">{s.source} · {s.metadata?.extensionVersion || '—'} · tab {s.metadata?.tabId ?? '—'}</td>
+          </tr>
+          <tr>
+            <th>Consented</th>
+            <td>{s.consented ? <span className="pill g">yes</span> : <span className="pill r">no</span>}</td>
+          </tr>
+          <tr>
             <th>Session ID</th>
             <td>
               <code className="mono">{s.sessionId}</code>
@@ -83,6 +92,12 @@ export default async function AdminCookieDetailPage({ params }) {
           </tr>
         </tbody>
       </table>
+      <div className="row-between" style={{ marginTop: 14 }}>
+        <div className="muted">
+          Session jars expire after 90 days. Retaining older captures indefinitely is never necessary.
+        </div>
+        <DeleteJarButton id={String(s._id)} />
+      </div>
       <JarReveal id={String(s._id)} />
     </Shell>
   );

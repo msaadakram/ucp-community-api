@@ -6,7 +6,9 @@ import LoginForm from './login-form';
 
 export const dynamic = 'force-dynamic';
 
-export default function AdminLoginPage() {
+export default async function AdminLoginPage({ searchParams }) {
+  const params = await searchParams;
+  const maintenance = params?.error === 'maintenance';
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: styles }} />
@@ -16,6 +18,12 @@ export default function AdminLoginPage() {
           <div className="muted">
             Control panel for the combined community + extension backend.
           </div>
+          {maintenance ? (
+            <div className="error" style={{ marginTop: 14 }}>
+              Temporarily unavailable — the database is unreachable. The
+              public API is unaffected.
+            </div>
+          ) : null}
           <LoginForm />
           <div className="muted" style={{ marginTop: 14 }}>
             Sign in with the credentials configured via the{' '}

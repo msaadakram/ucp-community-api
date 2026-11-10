@@ -45,4 +45,9 @@ export const styles = `
   .login-box label { display: block; font-size: 12px; color: #93a3ad; margin: 14px 0 6px; }
   .login-box input { width: 100%; background: #101619; border: 1px solid #2b383f; color: #e8eef1; border-radius: 10px; padding: 10px 12px; font-size: 14px; }
   .login-box button { width: 100%; margin-top: 18px; }
+  .row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tbl { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+  .tbl td, .tbl th { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid #0e7c8c; outline-offset: 1px; }
+  button:focus-visible, a:focus-visible { outline: 2px solid #5fd6e8; outline-offset: 2px; border-radius: 8px; }
 `;
