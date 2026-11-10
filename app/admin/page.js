@@ -77,14 +77,15 @@ export default async function AdminOverviewPage() {
   const c = await communityCounts(config);
 
   return (
-    <Shell username={username} active="overview">
-      <div className="row-between">
-        <div>
-          <h2 style={{ margin: '0 0 4px' }}>Overview</h2>
-          <div className="muted">Live counts from MongoDB (extension) + Supabase (community).</div>
-        </div>
-        <a className="btn ghost" href="/admin/health">Run health checks</a>
-      </div>
+    <Shell
+      username={username}
+      active="overview"
+      actions={<a className="btn ghost sm" href="/admin/health">Run health checks</a>}
+    >
+      <h1 className="page-title">Overview</h1>
+      <p className="page-sub">
+        Live counts from MongoDB (extension) + Supabase (community), refreshed on every load.
+      </p>
       {!m ? (
         <div className="error" style={{ marginTop: 12 }}>
           MongoDB unreachable — set <code className="mono">MONGODB_URI</code> and restart,
@@ -92,7 +93,7 @@ export default async function AdminOverviewPage() {
         </div>
       ) : null}
 
-      <h3 className="muted">EXTENSION (MONGODB)</h3>
+      <div className="section-label">Extension · MongoDB</div>
       <div className="grid">
         <div className="card">
           <h3>Grade rows</h3>
@@ -133,7 +134,7 @@ export default async function AdminOverviewPage() {
 
       {m && m.recent && m.recent.length > 0 ? (
         <>
-          <h3 className="muted">LATEST SESSION CAPTURES</h3>
+          <div className="section-label">Latest session captures</div>
           <table className="tbl">
             <thead>
               <tr>
@@ -159,7 +160,7 @@ export default async function AdminOverviewPage() {
         </>
       ) : null}
 
-      <h3 className="muted">COMMUNITY (SUPABASE)</h3>
+      <div className="section-label">Community · Supabase</div>
       <div className="grid">
         <div className="card">
           <h3>Posts</h3>
